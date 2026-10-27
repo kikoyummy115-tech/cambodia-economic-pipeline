@@ -14,7 +14,7 @@ from src.ingestion.world_bank import fetch_indicator
 from src.transformations.normalize import normalize_indicator_records
 from src.validation.checks import validate_observations
 from src.validation.database_checks import validate_database
-
+from src.validation.completeness import validate_completeness
 
 logging.basicConfig(
     level=logging.INFO,
@@ -151,12 +151,10 @@ def run_pipeline() -> None:
     frame = frame[columns].sort_values(["indicator_code", "year"]).reset_index(drop=True)
     csv_path = PROCESSED_DIR / f"cambodia_economic_observations_{run_started:%Y%m%dT%H%M%SZ}.csv"
     frame.to_csv(csv_path, index=False)
-    
-    
     loaded = load_idempotently(frame)
 
-    # Verify the actual database after loading.
     validate_database()
+    validate_completeness()
 
     logger.info(
         "Pipeline complete: %d observations loaded; CSV=%s",

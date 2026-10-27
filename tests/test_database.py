@@ -44,7 +44,6 @@ def test_database_contains_observations(connection):
     count = connection.execute("""
         SELECT COUNT(*) FROM economic_observations
     """).fetchone()[0]
-
     assert count > 0
 
 
@@ -57,7 +56,6 @@ def test_no_null_values(connection):
            OR year IS NULL
            OR value IS NULL
     """).fetchone()[0]
-
     assert count == 0
 
 
@@ -71,7 +69,6 @@ def test_no_duplicate_observations(connection):
             HAVING COUNT(*) > 1
         ) AS duplicate_groups
     """).fetchone()[0]
-
     assert duplicates == 0
 
 

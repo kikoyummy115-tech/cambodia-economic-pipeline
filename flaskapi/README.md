@@ -1,0 +1,1 @@
+Reserved for a later step: expose the validated DuckDB observations through Flask endpoints. Keep API work separate until the ingestion, validation, and storage pipeline is reliable.

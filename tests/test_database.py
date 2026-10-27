@@ -2,26 +2,50 @@
 import duckdb
 import math
 import pytest
-import sys
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.common.config import DB_PATH
 @pytest.fixture
-def connection():
-    conn = duckdb.connect(str(DB_PATH), read_only=True)
+def connection(tmp_path):
+    db_path = tmp_path / "test_economic.duckdb"
+    conn = duckdb.connect(str(db_path))
+
+    conn.execute("""
+        CREATE TABLE economic_observations (
+            country_code VARCHAR,
+            country_name VARCHAR,
+            year INTEGER,
+            indicator_code VARCHAR,
+            indicator_name VARCHAR,
+            value DOUBLE,
+            unit VARCHAR,
+            source VARCHAR,
+            retrieved_at TIMESTAMP
+        )
+    """)
+
+    conn.executemany("""
+        INSERT INTO economic_observations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, [
+        (
+            "KHM", "Cambodia", 2023, "TEST.GDP", "Test GDP",
+            5.0, "percent", "Test", "2026-01-01 00:00:00"
+        ),
+        (
+            "KHM", "Cambodia", 2024, "TEST.GDP", "Test GDP",
+            6.0, "percent", "Test", "2026-01-01 00:00:00"
+        ),
+    ])
+
     yield conn
     conn.close()
 
 
 def test_database_contains_observations(connection):
-    count = connection.execute(
-        "SELECT COUNT(*) FROM economic_observations"
-    ).fetchone()[0]
+    count = connection.execute("""
+        SELECT COUNT(*) FROM economic_observations
+    """).fetchone()[0]
 
-    assert count > 0, "Database contains no observations"
+    assert count > 0
 
 
 def test_no_null_values(connection):
@@ -34,7 +58,7 @@ def test_no_null_values(connection):
            OR value IS NULL
     """).fetchone()[0]
 
-    assert count == 0, f"Found {count} rows with null required fields"
+    assert count == 0
 
 
 def test_no_duplicate_observations(connection):
@@ -48,18 +72,15 @@ def test_no_duplicate_observations(connection):
         ) AS duplicate_groups
     """).fetchone()[0]
 
-    assert duplicates == 0, f"Found {duplicates} duplicate groups"
+    assert duplicates == 0
 
 
 def test_all_values_are_finite(connection):
     values = connection.execute("""
-        SELECT value
-        FROM economic_observations
+        SELECT value FROM economic_observations
     """).fetchall()
 
-    invalid_count = sum(
-        1 for (value,) in values
-        if value is None or not math.isfinite(value)
+    assert all(
+        value is not None and math.isfinite(value)
+        for (value,) in values
     )
-
-    assert invalid_count == 0, f"Found {invalid_count} invalid values"

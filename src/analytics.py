@@ -31,6 +31,18 @@ def main() -> None:
         """).df()
         print(counts.to_string(index=False))
 
+        print("\nGDP growth summary (2000–2024):")
+        growth = connection.execute("""
+            SELECT
+                ROUND(AVG(value), 2) AS average_growth,
+                ROUND(MIN(value), 2) AS minimum_growth,
+                ROUND(MAX(value), 2) AS maximum_growth
+            FROM economic_observations
+            WHERE indicator_code = 'NY.GDP.MKTP.KD.ZG'
+              AND year BETWEEN 2000 AND 2024
+        """).df()
+        print(growth.to_string(index=False))
+
 
 if __name__ == "__main__":
     main()
